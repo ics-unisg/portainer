@@ -8,7 +8,8 @@ services:
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --providers.docker
-      - --log.level=ERROR
+      - --api.dashboard=true
+      - --log.level=DEBUG
       - --certificatesresolvers.leresolver.acme.httpchallenge=true
       - --certificatesresolvers.leresolver.acme.email=martin.eigenmann@unisg.ch #Set your email address here, is for the generation of SSL certificates with Let's Encrypt. 
       - --certificatesresolvers.leresolver.acme.storage=./acme.json
@@ -19,14 +20,21 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./acme.json:/acme.json"
+    networks:
+      - default
+      - traefik
     labels:
+      - "traefik.docker.network=traefik"
       - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
       - "traefik.http.routers.http-catchall.entrypoints=web"
       - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.api.service=api@internal"
+      - "traefik.http.routers.api.tls.certresolver=leresolver"
 
   portainer:
-    image: portainer/portainer-ce:2.0.0
+    image: portainer/portainer-ce:latest
     command: -H unix:///var/run/docker.sock
     restart: always
     volumes:
@@ -51,3 +59,10 @@ services:
 
 volumes:
   portainer_data:
+
+networks:
+  traefik:
+    external:
+      name: traefik
+  default:
+    driver: bridge
